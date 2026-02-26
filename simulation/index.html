@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CanSat 2022 – Sinergia Team · Simulación 3D</title>
+    <meta name="description" content="Simulación 3D interactiva de la misión CanSat 2022 del equipo Sinergia, con motor de física real y telemetría en tiempo real.">
+    <link rel="stylesheet" href="index.css">
+</head>
+<body>
+    <div class="app">
+        <!-- ======== HEADER ======== -->
+        <header class="header">
+            <div class="header-left">
+                <div class="logo-circle">S</div>
+                <h1>CANSAT 2022 <span>· Sinergia Team · Grupo 3</span></h1>
+            </div>
+            <div class="header-right">
+                <div class="sim-mode">
+                    <button id="btn-sim-enable" class="sim-btn">SIM ENABLE</button>
+                    <button id="btn-sim-activate" class="sim-btn">SIM ACTIVATE</button>
+                    <span id="sim-status">STANDBY</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- ======== 3D VIEWPORT ======== -->
+        <div id="viewport">
+            <!-- Altimeter overlay -->
+            <div class="altimeter-overlay">
+                <span class="altimeter-label">ALT</span>
+                <div id="altimeter-fill"></div>
+                <div class="alt-marks">
+                    <div class="alt-mark" style="bottom:0%">0</div>
+                    <div class="alt-mark" style="bottom:41.4%" title="300m">300</div>
+                    <div class="alt-mark" style="bottom:55.2%" title="400m">400</div>
+                    <div class="alt-mark" style="bottom:100%" title="725m">725</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ======== TELEMETRY PANEL ======== -->
+        <aside class="telemetry-panel">
+            <!-- Mission Phase -->
+            <div class="tel-section">
+                <div class="tel-section-title"><span class="icon">📡</span> ESTADO DE MISIÓN</div>
+                <div id="tel-phase" class="phase-badge phase-preflight">PRE-VUELO</div>
+                <div class="tel-row" style="margin-top:8px">
+                    <span class="tel-label">Tiempo de misión</span>
+                    <span class="tel-value" id="tel-mission-time">—</span>
+                </div>
+            </div>
+
+            <!-- Status Indicators -->
+            <div class="tel-section">
+                <div class="tel-section-title"><span class="icon">🔔</span> INDICADORES</div>
+                <div class="indicators">
+                    <div class="indicator" id="ind-chute1"><span class="dot"></span>1er Paracaídas</div>
+                    <div class="indicator" id="ind-chute2"><span class="dot"></span>2do Paracaídas</div>
+                    <div class="indicator" id="ind-payload"><span class="dot"></span>Carga Útil</div>
+                    <div class="indicator" id="ind-cable"><span class="dot"></span>Cable Deploy</div>
+                </div>
+            </div>
+
+            <!-- Primary Telemetry -->
+            <div class="tel-section">
+                <div class="tel-section-title"><span class="icon">📏</span> ALTÍMETRO</div>
+                <div class="tel-row">
+                    <span class="tel-label">Altitud contenedor</span>
+                    <span><span class="tel-value big" id="tel-altitude">—</span><span class="tel-unit">m</span></span>
+                </div>
+                <div class="tel-row">
+                    <span class="tel-label">Altitud carga útil</span>
+                    <span><span class="tel-value" id="tel-payload-alt">—</span><span class="tel-unit">m</span></span>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-label">ALTITUD vs TIEMPO</div>
+                    <canvas id="alt-chart" width="320" height="50"></canvas>
+                </div>
+            </div>
+
+            <div class="tel-section">
+                <div class="tel-section-title"><span class="icon">⏬</span> VELOCIDAD</div>
+                <div class="tel-row">
+                    <span class="tel-label">Vel. descenso</span>
+                    <span><span class="tel-value big" id="tel-velocity">—</span><span class="tel-unit">m/s</span></span>
+                </div>
+                <div class="tel-row">
+                    <span class="tel-label">Aceleración</span>
+                    <span><span class="tel-value" id="tel-acceleration">—</span><span class="tel-unit">m/s²</span></span>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-label">VELOCIDAD vs TIEMPO</div>
+                    <canvas id="vel-chart" width="320" height="50"></canvas>
+                </div>
+            </div>
+
+            <!-- Sensors -->
+            <div class="tel-section">
+                <div class="tel-section-title"><span class="icon">🌡️</span> SENSORES (BMP280)</div>
+                <div class="tel-row">
+                    <span class="tel-label">Temperatura</span>
+                    <span><span class="tel-value" id="tel-temperature">—</span><span class="tel-unit">°C</span></span>
+                </div>
+                <div class="tel-row">
+                    <span class="tel-label">Presión</span>
+                    <span><span class="tel-value" id="tel-pressure">—</span><span class="tel-unit">hPa</span></span>
+                </div>
+            </div>
+
+            <!-- GPS -->
+            <div class="tel-section">
+                <div class="tel-section-title"><span class="icon">🛰️</span> GPS (GP-02)</div>
+                <div class="tel-row">
+                    <span class="tel-label">Latitud</span>
+                    <span class="tel-value" id="tel-gps-lat">—</span>
+                </div>
+                <div class="tel-row">
+                    <span class="tel-label">Longitud</span>
+                    <span class="tel-value" id="tel-gps-lon">—</span>
+                </div>
+            </div>
+
+            <!-- Camera Orientation -->
+            <div class="tel-section">
+                <div class="tel-section-title"><span class="icon">🎯</span> CÁMARA (GIMBAL + IMU)</div>
+                <div class="compass-container">
+                    <div class="compass-labels">
+                        <span class="n">N</span>
+                        <span class="s">S</span>
+                        <span class="e">E</span>
+                        <span class="w">O</span>
+                    </div>
+                    <div id="compass-needle"></div>
+                </div>
+                <div class="tel-row">
+                    <span class="tel-label">Heading</span>
+                    <span><span class="tel-value" id="tel-heading">—</span><span class="tel-unit">°</span></span>
+                </div>
+                <div class="tel-row">
+                    <span class="tel-label">Pitch</span>
+                    <span><span class="tel-value" id="tel-pitch">—</span><span class="tel-unit">°</span></span>
+                </div>
+                <div class="tel-row">
+                    <span class="tel-label">Cable desplegado</span>
+                    <span><span class="tel-value" id="tel-cable">—</span><span class="tel-unit">m</span></span>
+                </div>
+            </div>
+
+            <!-- Engineering Data -->
+            <div class="tel-section engineering">
+                <div class="tel-section-title"><span class="icon">⚙️</span> INGENIERÍA</div>
+                <div class="tel-row">
+                    <span class="tel-label">Fuerza de Drag</span>
+                    <span><span class="tel-value" id="tel-drag-force">—</span><span class="tel-unit">N</span></span>
+                </div>
+                <div class="tel-row">
+                    <span class="tel-label">Vel. Terminal</span>
+                    <span><span class="tel-value" id="tel-terminal-vel">—</span><span class="tel-unit">m/s</span></span>
+                </div>
+                <div class="tel-row">
+                    <span class="tel-label">ρ aire</span>
+                    <span><span class="tel-value" id="tel-air-density">—</span><span class="tel-unit">kg/m³</span></span>
+                </div>
+                <div class="tel-row">
+                    <span class="tel-label">Reynolds</span>
+                    <span class="tel-value" id="tel-reynolds">—</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- ======== CONTROLS BAR ======== -->
+        <div class="controls-bar">
+            <button id="btn-launch" class="ctrl-btn launch">🚀 Iniciar Misión</button>
+            <button id="btn-pause" class="ctrl-btn" disabled>⏸ Pausa</button>
+            <button id="btn-reset" class="ctrl-btn">🔄 Reset</button>
+
+            <div class="speed-group">
+                <button class="speed-btn active" data-speed="1">1×</button>
+                <button class="speed-btn" data-speed="2">2×</button>
+                <button class="speed-btn" data-speed="5">5×</button>
+                <button class="speed-btn" data-speed="10">10×</button>
+            </div>
+
+            <div class="keyboard-hint">
+                <kbd>Space</kbd> iniciar/pausa · <kbd>R</kbd> reset · <kbd>1-4</kbd> velocidad
+            </div>
+        </div>
+    </div>
+
+    <!-- ======== SCRIPTS ======== -->
+    <!-- Three.js + OrbitControls via CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <!-- Simulation modules -->
+    <script src="physics.js"></script>
+    <script src="scene.js"></script>
+    <script src="telemetry.js"></script>
+    <script src="main.js"></script>
+</body>
+</html>
